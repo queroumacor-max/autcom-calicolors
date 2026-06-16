@@ -584,6 +584,8 @@ var currentStep = 0;
 var selectedFab = null;
 var selectedCor = null;
 var DB_PATH = '/databases/BBFCoresSW.FDB';
+var SUPABASE_URL = 'https://uwqebaqweehiljsqkifm.supabase.co';
+var SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3cWViYXF3ZWVoaWxqc3FraWZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMjYzMjgsImV4cCI6MjA4OTgwMjMyOH0.yp-z4iMifiOV3ftLVIHOFEQBLcMBdU8VFok7VKlSFg8';
 
 var FAB_CONFIG = {
   'SHERWIN':                   {emoji:'🟥'},
@@ -638,10 +640,21 @@ document.getElementById('date3').textContent = new Date().toLocaleDateString('pt
 document.getElementById('orcData').value = new Date().toLocaleDateString('pt-BR');
 
 async function apiQuery(sql) {
-  var res = await fetch('/api/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({db:DB_PATH,sql:sql})});
+  var res = await fetch(SUPABASE_URL + '/rest/v1/rpc/executar_sql', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON,
+      'Authorization': 'Bearer ' + SUPABASE_ANON
+    },
+    body: JSON.stringify({query: sql})
+  });
+  if (!res.ok) {
+    var err = await res.json().catch(function(){return {};});
+    throw new Error(err.message || err.hint || res.statusText);
+  }
   var data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return data;
+  return {rows: Array.isArray(data) ? data : []};
 }
 
 // ── TELA 6: Carrossel ─────────────────────────────────────────
@@ -702,8 +715,8 @@ async function carregarConsulta(filtro) {
   try {
     var where = "c.FLAG_EXCLUIDO='N'";
     if (selectedFab && selectedFab.cod) where += ' AND c.COD_COLECAO=' + selectedFab.cod;
-    if (filtro) where += " AND (UPPER(c.COD_COR_USUARIO) CONTAINING UPPER('" + filtro.replace(/'/g,"''") + "') OR UPPER(c.NOME_COR) CONTAINING UPPER('" + filtro.replace(/'/g,"''") + "'))";
-    var data = await apiQuery('SELECT FIRST 300 c.COD_COR,c.COD_COR_USUARIO,c.NOME_COR,c.R,c.G,c.B,c.COD_COLECAO FROM CORES c WHERE ' + where + ' ORDER BY c.NOME_COR');
+    if (filtro) where += " AND (c.COD_COR_USUARIO ILIKE '%" + filtro.replace(/'/g,"''") + "%' OR c.NOME_COR ILIKE '%" + filtro.replace(/'/g,"''") + "%')";
+    var data = await apiQuery('SELECT c.COD_COR,c.COD_COR_USUARIO,c.NOME_COR,c.R,c.G,c.B,c.COD_COLECAO FROM CORES c WHERE ' + where + ' ORDER BY c.NOME_COR LIMIT 300');
     renderConsulta(data.rows);
   } catch(e) {
     tbody.innerHTML = '<tr><td colspan="8" style="color:#c00;padding:12px;">❌ ' + e.message + '</td></tr>';
@@ -822,13 +835,13 @@ async function renderFormulacaoPorEmbalagem(codEmbalagem) {
     var embFilterFC = codEmbalagem ? ' AND fc.COD_EMBALAGEM = ' + codEmbalagem : '';
     var data = await apiQuery(
       'SELECT fc.COD_CORANTE, c.NOME_CORANTE, fc.QUANTIDADE_CORANTE, fc.COD_EMBALAGEM, ' +
-      '(SELECT FIRST 1 ct2.PRECO_CUSTO FROM CORANTES_TABELAS ct2 WHERE ct2.COD_CORANTE = fc.COD_CORANTE AND ct2.PRECO_CUSTO > 0) AS PRECO_CUSTO ' +
+      '(SELECT ct2.PRECO_CUSTO FROM CORANTES_TABELAS ct2 WHERE ct2.COD_CORANTE = fc.COD_CORANTE AND ct2.PRECO_CUSTO > 0 LIMIT 1) AS PRECO_CUSTO ' +
       'FROM FORMULAS_CORANTES fc ' +
       'LEFT JOIN CORANTES c ON c.COD_CORANTE = fc.COD_CORANTE ' +
       'WHERE fc.COD_COR = ' + selectedCor.cod +
       ' AND fc.COD_COLECAO = ' + (selectedCor.colecao||1) +
-      ' AND fc.COD_PRODUTO = (SELECT FIRST 1 COD_PRODUTO FROM FORMULAS_CORANTES WHERE COD_COR = ' + selectedCor.cod +
-      ' AND COD_COLECAO = ' + (selectedCor.colecao||1) + embFilter + ')' +
+      ' AND fc.COD_PRODUTO = (SELECT COD_PRODUTO FROM FORMULAS_CORANTES WHERE COD_COR = ' + selectedCor.cod +
+      ' AND COD_COLECAO = ' + (selectedCor.colecao||1) + embFilter + ' LIMIT 1)' +
       embFilterFC + ' ORDER BY fc.COD_CORANTE'
     );
 
