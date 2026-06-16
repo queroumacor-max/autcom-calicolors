@@ -667,11 +667,11 @@ async function carregarFabricantes() {
     var data = await apiQuery("SELECT COD_COLECAO, NOME_COLECAO FROM COLECOES WHERE FLAG_EXCLUIDO='N' ORDER BY NOME_COLECAO");
     list.innerHTML = '';
     data.rows.forEach(function(row) {
-      var nome = (row.NOME_COLECAO||'').trim();
+      var nome = (row.nome_colecao||'').trim();
       var cfg = FAB_CONFIG[nome] || {emoji:'🎨'};
       var div = document.createElement('div');
       div.className = 'fab-card';
-      div.dataset.cod = row.COD_COLECAO;
+      div.dataset.cod = row.cod_colecao;
       div.dataset.nome = nome;
       div.innerHTML = '<div class="fab-card-logo">' + cfg.emoji + '</div><div class="fab-card-name">' + nome + '</div>';
       div.onclick = function() { fabSelect(this); };
@@ -731,15 +731,15 @@ function renderConsulta(rows) {
   }
   tbody.innerHTML = '';
   rows.forEach(function(row) {
-    var r=row.R||200, g=row.G||200, b=row.B||200;
+    var r=row.r||200, g=row.g||200, b=row.b||200;
     var hex='#'+[r,g,b].map(function(v){return ('0'+Number(v).toString(16)).slice(-2);}).join('');
     var tr = document.createElement('tr');
-    tr.dataset.cod=row.COD_COR; tr.dataset.codUsr=(row.COD_COR_USUARIO||'').trim();
-    tr.dataset.nome=(row.NOME_COR||'').trim(); tr.dataset.r=r; tr.dataset.g=g; tr.dataset.b=b;
-    tr.dataset.colecao=row.COD_COLECAO;
+    tr.dataset.cod=row.cod_cor; tr.dataset.codUsr=(row.cod_cor_usuario||'').trim();
+    tr.dataset.nome=(row.nome_cor||'').trim(); tr.dataset.r=r; tr.dataset.g=g; tr.dataset.b=b;
+    tr.dataset.colecao=row.cod_colecao;
     tr.innerHTML =
-      '<td style="font-family:monospace;color:#000080;font-weight:bold;">'+(row.COD_COR_USUARIO||'').trim()+'</td>'+
-      '<td style="font-weight:bold;">'+(row.NOME_COR||'').trim()+'</td>'+
+      '<td style="font-family:monospace;color:#000080;font-weight:bold;">'+(row.cod_cor_usuario||'').trim()+'</td>'+
+      '<td style="font-weight:bold;">'+(row.nome_cor||'').trim()+'</td>'+
       '<td style="color:#666;">08/05/2025</td>'+
       '<td style="color:#444;font-size:10px;">NOVO METALATEX ACRÍLICO FOSCO</td>'+
       '<td><span style="display:inline-block;width:14px;height:14px;background:'+hex+';border:1px solid #808080;"></span></td>'+
@@ -806,11 +806,11 @@ async function carregarFormulacao() {
     tamanhoDiv.innerHTML = '';
     var firstEmb = null;
     embData.rows.forEach(function(row, i) {
-      if (!firstEmb) firstEmb = row.COD_EMBALAGEM;
+      if (!firstEmb) firstEmb = row.cod_embalagem;
       var btn = document.createElement('button');
       btn.className = 'tamanho-btn' + (i===0?' selected':'');
-      btn.dataset.emb = row.COD_EMBALAGEM;
-      var desc = (row.DESCRICAO_EMBALAGEM||'Emb.'+row.COD_EMBALAGEM).trim();
+      btn.dataset.emb = row.cod_embalagem;
+      var desc = (row.descricao_embalagem||'Emb.'+row.cod_embalagem).trim();
       btn.textContent = desc;
       btn.onclick = function() {
         document.querySelectorAll('.tamanho-btn').forEach(function(b){ b.classList.remove('selected'); });
@@ -855,16 +855,16 @@ async function renderFormulacaoPorEmbalagem(codEmbalagem) {
     var BASE_PRECO = 146.37;
 
     data.rows.forEach(function(row) {
-      var qtdML   = parseFloat(row.QUANTIDADE_CORANTE||0);
+      var qtdML   = parseFloat(row.quantidade_corante||0);
       var qtdOnca = qtdML / 29.5735;
-      var preco   = parseFloat(row.PRECO_CUSTO||0);
-      var embal   = parseFloat(row.COD_EMBALAGEM||1);
+      var preco   = parseFloat(row.preco_custo||0);
+      var embal   = parseFloat(row.cod_embalagem||1);
       var valorCor = embal>0 ? (qtdML*preco/embal) : 0;
       totalML += qtdML; totalOnca += qtdOnca; totalCorValue += valorCor;
       var div = document.createElement('div');
       div.className = 'list-row';
       div.innerHTML =
-        '<span style="flex:2;">'+(row.NOME_CORANTE||'Corante '+row.COD_CORANTE).trim()+'</span>'+
+        '<span style="flex:2;">'+(row.nome_corante||'Corante '+row.cod_corante).trim()+'</span>'+
         '<span style="width:90px;text-align:right;font-family:monospace;">'+qtdML.toFixed(3).replace('.',',')+'</span>'+
         '<span style="width:90px;text-align:right;font-family:monospace;">'+qtdOnca.toFixed(2).replace('.',',')+'</span>'+
         '<span style="width:110px;text-align:right;font-family:monospace;">'+preco.toFixed(6).replace('.',',')+'</span>'+
