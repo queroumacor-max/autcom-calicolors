@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AUTCOM - Calicolors</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Courier New', monospace; font-size: 13px; background: #008080; min-height: 100vh; overflow-x: hidden; }
+  .screen { min-height: 100vh; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 16px; background: #008080; position: relative; }
+  .screen.active { display: flex; }
+  .screen.desktop { align-items: flex-start; justify-content: flex-start; padding: 0; }
+  .window { background: #c0c0c0; border: 2px solid; border-color: #ffffff #808080 #808080 #ffffff; box-shadow: 2px 2px 0 #000; min-width: 480px; max-width: 680px; width: 100%; }
+  .window.narrow { max-width: 380px; }
+  .window.wide { max-width: 780px; }
+  .window.popup { max-width: 340px; box-shadow: 4px 4px 8px rgba(0,0,0,.5); z-index:10; }
+  .window.ghost { opacity:.25; pointer-events:none; margin-bottom:-200px; }
+  .title-bar { background: linear-gradient(to right, #000080, #1084d0); color: #fff; padding: 3px 6px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: bold; user-select: none; }
+  .title-bar .title-left { display: flex; align-items: center; gap: 4px; }
+  .title-btns { display: flex; gap: 2px; }
+  .title-btn { width: 16px; height: 14px; background: #c0c0c0; border: 2px solid; border-color: #fff #808080 #808080 #fff; font-size: 9px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+  .win-body { padding: 12px; background: #c0c0c0; }
+  .sep { height: 2px; background: #808080; border-bottom: 1px solid #fff; margin: 8px 0; }
+  .panel { background: #c0c0c0; border: 2px solid; border-color: #808080 #fff #fff #808080; padding: 8px; margin-bottom: 8px; }
+  input[type=text], input[type=password] { background: #fff; border: 2px solid; border-color: #808080 #fff #fff #808080; padding: 2px 4px; font-size: 13px; font-family: 'Courier New', monospace; outline: none; width: 100%; }
+  input.short { width: 120px; }
+  input.tiny { width: 80px; }
+  button { background: #c0c0c0; border: 2px solid; border-color: #fff #808080 #808080 #fff; padding: 4px 20px; font-size: 12px; font-family: 'Courier New', monospace; cursor: pointer; min-width: 80px; box-shadow: 1px 1px 0 #000; }
+  button:active { border-color: #808080 #fff #fff #808080; box-shadow: none; }
+  button.primary { font-weight: bold; }
+  button.small { padding: 3px 10px; min-width: unset; font-size: 11px; }
+  button.danger { color: #800000; }
+  button:disabled { opacity: .5; cursor: default; }
+  .listbox { background: #fff; border: 2px solid; border-color: #808080 #fff #fff #808080; overflow-y: auto; font-size: 12px; }
+  .listbox .item { padding: 2px 6px; cursor: pointer; display: flex; align-items: center; }
+  .listbox .item:hover { background: #d0d0f0; }
+  .listbox .item.active { background: #000080; color: #fff; }
+  .listbox .list-header { background: #000080; color: #fff; padding: 3px 8px; font-size: 11px; font-weight: bold; display: flex; }
+  .listbox .list-row { display: flex; padding: 4px 8px; font-size: 12px; border-bottom: 1px solid #e0e0e0; cursor: pointer; }
+  .listbox .list-row:nth-child(even) { background: #f0f0f8; }
+  .listbox .list-row:hover { background: #d0d0f0; }
+  .listbox .list-row.active { background: #000080; color: #fff; }
+  .status-bar { background: #c0c0c0; border-top: 1px solid #808080; padding: 2px 8px; font-size: 11px; display: flex; gap: 12px; }
+  .fkeys { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+  .tabs { display: flex; gap: 0; }
+  .tab { padding: 4px 14px; background: #a0a0a0; border: 2px solid; border-color: #fff #808080 #c0c0c0 #fff; font-size: 12px; cursor: pointer; border-bottom: none; }
+  .tab.active { background: #c0c0c0; font-weight: bold; }
+  .info-grid { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12px; }
+  .lbl { color: #444; font-size: 11px; }
+  .tip { background: #ffffc0; border: 1px solid #c0c000; padding: 4px 8px; font-size: 11px; }
+  .tip-ok { background: #c0ffc0; border: 1px solid #00c000; padding: 4px 8px; font-size: 11px; }
+  .tip-warn { background: #ffe0c0; border: 1px solid #c08000; padding: 4px 8px; font-size: 11px; }
+  .tip-blue { background: #c0e0ff; border: 1px solid #0060c0; padding: 4px 8px; font-size: 11px; }
+  .tamanhos { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+  .tamanho-btn { padding: 4px 12px; font-size: 12px; background: #c0c0c0; border: 2px solid; border-color: #fff #808080 #808080 #fff; cursor: pointer; font-family: 'Courier New', monospace; }
+  .tamanho-btn.selected { background: #000080; color: #fff; border-color: #4040c0 #000040 #000040 #4040c0; }
+  .row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .row label { font-size: 12px; min-width: 80px; }
+  .flex-end { display: flex; justify-content: flex-end; gap: 8px; }
+  .flex-center { display: flex; justify-content: center; gap: 12px; }
+  #step-indicator { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
+  .step-badge { font-size: 10px; padding: 2px 8px; background: #a0a0a0; border: 1px solid #808080; color: #444; }
+  .step-badge.current { background: #000080; color: #fff; font-weight: bold; }
+  .step-badge.done { background: #006000; color: #fff; }
+  /* Desktop */
+  #taskbar { position: fixed; bottom: 0; left: 0; right: 0; height: 30px; background: #c0c0c0; border-top: 2px solid #fff; display: flex; align-items: center; padding: 0 4px; gap: 4px; z-index: 100; }
+  .start-btn { background: #c0c0c0; border: 2px solid; border-color: #fff #808080 #808080 #fff; padding: 2px 8px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+  #clock { margin-left: auto; font-size: 12px; padding: 2px 8px; border: 2px solid; border-color: #808080 #fff #fff #808080; }
+  #desktop-label { padding: 4px 8px; font-size: 11px; color: #fff; }
+  .desktop-icon { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; padding: 8px; width: 80px; color: #fff; text-shadow: 1px 1px #000; }
+  .desktop-icon:hover { background: rgba(0,0,128,0.4); }
+  .icon-img { font-size: 32px; }
+  .icon-label { font-size: 11px; text-align: center; }
+  .bottom-tip { position: fixed; bottom: 36px; left: 0; right: 0; text-align: center; color: #fff; font-size: 12px; text-shadow: 1px 1px #000; }
+  /* Citel */
+  .citel-launcher { background: linear-gradient(135deg,#1a1a2e,#16213e,#0f3460); min-height: 100vh; display: flex; flex-direction: column; }
+  .citel-header { background: rgba(255,255,255,0.05); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .citel-logo { font-size: 28px; font-weight: 700; color: #00b4d8; font-family: sans-serif; }
+  .citel-logo span { color: #fff; }
+  .citel-sair { color: #aaa; font-size: 13px; cursor: pointer; font-family: sans-serif; background: none; border: none; padding: 0; box-shadow: none; }
+  .citel-icons { display: flex; gap: 24px; padding: 40px; justify-content: center; flex-wrap: wrap; flex: 1; align-items: center; }
+  .citel-icon { display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; padding: 20px; border-radius: 12px; transition: background 0.2s; width: 120px; }
+  .citel-icon:hover { background: rgba(255,255,255,0.1); }
+  .citel-icon-img { width: 64px; height: 64px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+  .citel-icon-label { color: #fff; font-size: 12px; text-align: center; font-family: sans-serif; }
+  /* Login moderno */
+  .login-card { background: #fff; border-radius: 8px; overflow: hidden; display: flex; width: 640px; min-height: 380px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+  .login-form-side { padding: 40px; flex: 1; display: flex; flex-direction: column; gap: 16px; }
+  .login-brand { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 2px; }
+  .login-input-group { display: flex; flex-direction: column; gap: 4px; }
+  .login-input-group label { font-size: 12px; color: #666; font-family: sans-serif; }
+  .login-input-wrap { position: relative; }
+  .login-input { border: 1px solid #ddd; border-radius: 4px; padding: 8px 12px; font-size: 14px; font-family: sans-serif; outline: none; width: 100%; }
+  .login-input:focus { border-color: #1084d0; }
+  .login-input-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #aaa; font-size: 14px; }
+  .login-btn { background: #1084d0; color: #fff; border: none; border-radius: 4px; padding: 10px; font-size: 14px; cursor: pointer; font-family: sans-serif; font-weight: 600; box-shadow: none; min-width: unset; }
+  .login-btn:hover { background: #0a6ab0; }
+  .login-version { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #888; font-family: sans-serif; }
+  .login-promo { background: linear-gradient(135deg,#0f3460,#1084d0); flex: 1.2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 32px; }
+  .login-promo-logo { font-size: 42px; font-weight: 900; color: #fff; font-family: sans-serif; letter-spacing: -2px; }
+  .login-promo-sub { color: rgba(255,255,255,0.7); font-size: 13px; font-family: sans-serif; text-align: center; }
+  .login-err { background: #fee; border: 1px solid #fcc; color: #c00; padding: 6px 10px; border-radius: 4px; font-size: 12px; font-family: sans-serif; display: none; }
+  /* Autcom Principal */
+  .autcom-main { background: #f0f2f5; min-height: 100vh; display: flex; flex-direction: column; font-family: sans-serif; }
+  .autcom-topbar { background: #fff; border-bottom: 1px solid #ddd; padding: 0 16px; height: 48px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .autcom-topbar-logo { font-size: 13px; font-weight: 700; color: #1084d0; }
+  .autcom-topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: 12px; color: #666; }
+  .autcom-layout { display: flex; flex: 1; }
+  .autcom-sidebar { width: 200px; background: #1a2035; color: #fff; flex-shrink: 0; }
+  .autcom-sidebar-item { padding: 10px 16px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; border-left: 3px solid transparent; }
+  .autcom-sidebar-item:hover { background: rgba(255,255,255,0.08); }
+  .autcom-sidebar-item.active { background: rgba(16,132,208,0.2); border-left-color: #1084d0; color: #1084d0; }
+  .autcom-sidebar-section { padding: 8px 16px 4px; font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+  .autcom-content { flex: 1; padding: 20px; position: relative; min-height: 400px; }
+  .autcom-shortcuts { display: grid; grid-template-columns: repeat(2, 60px); gap: 12px; position: absolute; right: 20px; top: 20px; }
+  .autcom-shortcut { width: 60px; height: 60px; background: #fff; border: 1px solid #ddd; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .autcom-shortcut:hover { border-color: #1084d0; }
+  .autcom-shortcut span { font-size: 20px; }
+  .autcom-shortcut small { font-size: 9px; color: #666; text-align: center; }
+  .autcom-statusbar { background: #fff; border-top: 1px solid #ddd; padding: 4px 16px; font-size: 11px; color: #666; display: flex; gap: 16px; }
+  /* Carrossel */
+  .fab-carousel-title { color: #fff; font-size: 22px; font-family: sans-serif; font-weight: 300; margin-bottom: 32px; text-align: center; }
+  .fab-carousel-track { display: flex; gap: 20px; align-items: center; justify-content: center; flex-wrap: wrap; max-width: 700px; }
+  .fab-card { width: 140px; height: 110px; background: rgba(255,255,255,0.15); border: 3px solid transparent; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; gap: 8px; }
+  .fab-card:hover { background: rgba(255,255,255,0.25); transform: scale(1.05); }
+  .fab-card.selected { background: rgba(255,255,255,0.95); border-color: #fff; transform: scale(1.1); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+  .fab-card-logo { font-size: 36px; }
+  .fab-card-name { font-size: 11px; color: rgba(255,255,255,0.9); text-align: center; font-family: sans-serif; font-weight: 600; padding: 0 6px; }
+  .fab-card.selected .fab-card-name { color: #333; }
+  .fab-confirm-btn { margin-top: 32px; background: #fff; color: #1a6b8a; border: none; padding: 12px 40px; border-radius: 24px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: sans-serif; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+  .fab-confirm-btn:disabled { opacity: 0.4; cursor: default; }
+  /* Consulta Dinâmica */
+  .consulta-table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: 'Courier New', monospace; }
+  .consulta-table th { background: #000080; color: #fff; padding: 3px 8px; text-align: left; font-size: 11px; border-right: 1px solid #4040a0; white-space: nowrap; }
+  .consulta-table td { padding: 2px 8px; border-bottom: 1px solid #e0e0e0; white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+  .consulta-table tr:nth-child(even) td { background: #f0f0f8; }
+  .consulta-table tr:hover td { background: #d0d0f8; }
+  .consulta-table tr.active td { background: #000080; color: #fff; }
+  .consulta-input { border: 2px solid; border-color: #808080 #fff #fff #808080; padding: 2px 6px; font-size: 12px; font-family: 'Courier New', monospace; width: 100px; outline: none; background: #fff; }
+  /* Tinta Máquina */
+  .tinta-field { display: flex; flex-direction: column; gap: 3px; }
+  .tinta-field label { font-size: 11px; color: #000080; font-weight: bold; }
+  .tinta-price-box { background: #fff; border: 2px solid; border-color: #808080 #fff #fff #808080; padding: 6px 10px; }
+  .tinta-price-label { font-size: 10px; color: #000080; font-weight: bold; }
+  .tinta-price-val { font-size: 14px; font-family: 'Courier New', monospace; text-align: right; padding-top: 4px; }
+  @media (max-width: 520px) {
+    .window { min-width: unset; }
+    #step-indicator { display: none; }
+    .login-card { flex-direction: column; width: 100%; }
+    .login-promo { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TELA 0 — DESKTOP -->
+<div id="tela0" class="screen desktop active">
+  <span id="desktop-label">Área de Trabalho</span>
+  <div class="desktop-icon" ondblclick="goTo(1)" style="margin:24px 24px 0;">
+    <div class="icon-img">🖥️</div>
+    <span class="icon-label">calicolors_...</span>
+  </div>
+  <div class="bottom-tip">👆 Duplo clique no ícone para iniciar</div>
+  <div id="taskbar">
+    <div class="start-btn">🪟 Iniciar</div>
+    <div id="clock">00:00</div>
+  </div>
+</div>
+
+<!-- TELA 1 — CITEL LAUNCHER -->
+<div id="tela1" class="screen" style="padding:0;background:#1a1a2e;">
+  <div class="citel-launcher" style="width:100%;min-height:100vh;">
+    <div class="citel-header">
+      <div class="citel-logo">C<span>itel</span></div>
+      <button class="citel-sair" onclick="goTo(0)">Sair</button>
+    </div>
+    <div class="citel-icons">
+      <div class="citel-icon" onclick="goTo(2)">
+        <div class="citel-icon-img" style="background:linear-gradient(135deg,#1084d0,#0a5a9c);">🔄</div>
+        <div class="citel-icon-label">Autcom<br>Calicolors</div>
+      </div>
+      <div class="citel-icon">
+        <div class="citel-icon-img" style="background:linear-gradient(135deg,#2ea84f,#1a7a38);">🏦</div>
+        <div class="citel-icon-label">AutBan<br>Calicolors</div>
+      </div>
+      <div class="citel-icon">
+        <div class="citel-icon-img" style="background:linear-gradient(135deg,#e85d04,#c04000);">🎨</div>
+        <div class="citel-icon-label">AutTin<br>Calicolors</div>
+      </div>
+      <div class="citel-icon">
+        <div class="citel-icon-img" style="background:linear-gradient(135deg,#6a4c93,#4a2c73);">📋</div>
+        <div class="citel-icon-label">PainelNFe<br>Calicolors</div>
+      </div>
+      <div class="citel-icon">
+        <div class="citel-icon-img" style="background:linear-gradient(135deg,#e8c43a,#c09000);">📁</div>
+        <div class="citel-icon-label">Acesso<br>Calicolors</div>
+      </div>
+    </div>
+  </div>
+  <div id="si1"></div>
+</div>
+
+<!-- TELA 2 — LOGIN MODERNO -->
+<div id="tela2" class="screen" style="padding:0;background:linear-gradient(135deg,#1a1a2e,#0f3460);">
+  <div class="login-card">
+    <div class="login-form-side">
+      <div class="login-brand">Sistema de Gestão</div>
+      <div class="login-input-group">
+        <label>Usuário</label>
+        <div class="login-input-wrap">
+          <input class="login-input" id="login-user" type="text" value="001"
+            onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+          <span class="login-input-icon">👤</span>
+        </div>
+      </div>
+      <div class="login-input-group">
+        <label>Senha</label>
+        <div class="login-input-wrap">
+          <input class="login-input" id="login-pass" type="password" value="6071"
+            onkeydown="if(event.key==='Enter')doLogin()">
+          <span class="login-input-icon">🔑</span>
+        </div>
+      </div>
+      <div class="login-input-group">
+        <label>Empresa</label>
+        <div class="login-input-wrap">
+          <input class="login-input" type="text" value="001">
+          <span class="login-input-icon">🏢</span>
+        </div>
+      </div>
+      <div id="login-err" class="login-err">Usuário ou senha incorretos</div>
+      <button class="login-btn" onclick="doLogin()">LOGIN</button>
+      <div class="login-version"><input type="checkbox" checked> <span>Versão Clássica</span></div>
+    </div>
+    <div class="login-promo">
+      <div class="login-promo-logo">AUTCOM</div>
+      <div class="login-promo-sub">Sistema de Gestão Empresarial</div>
+    </div>
+  </div>
+  <div id="si2"></div>
+</div>
+
+<!-- TELA 3 — PRINCIPAL MODERNO -->
+<div id="tela3" class="screen" style="padding:0;background:#f0f2f5;">
+  <div class="autcom-main" style="width:100%;min-height:100vh;">
+    <div class="autcom-topbar">
+      <div class="autcom-topbar-logo">🔄 Autcom V. 48.2.30.74.74</div>
+      <span style="font-size:12px;color:#666;">| 001 - RM SW CALICOLORS TINTAS LTDA</span>
+      <div class="autcom-topbar-right">
+        <span>🔍 Pesquisar</span>
+        <span id="date3" style="font-weight:bold;color:#333;"></span>
+      </div>
+    </div>
+    <div class="autcom-layout" style="min-height:calc(100vh - 80px);">
+      <div class="autcom-sidebar">
+        <div style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.1);">
+          <div style="font-size:11px;color:#aaa;">Bem-vindo,</div>
+          <div style="font-size:13px;color:#fff;font-weight:bold;">Fabio</div>
+        </div>
+        <div class="autcom-sidebar-item">📊 Dashboard</div>
+        <div class="autcom-sidebar-item">👥 Cadastros</div>
+        <div class="autcom-sidebar-item">🛒 Faturamento</div>
+        <div class="autcom-sidebar-item">📞 Teleatendimento</div>
+        <div class="autcom-sidebar-item">💰 Financeiro</div>
+        <div class="autcom-sidebar-item">❌ Cancelamento</div>
+        <div class="autcom-sidebar-item">📄 Fiscal</div>
+        <div class="autcom-sidebar-item">📦 Movimentação de Itens</div>
+        <div class="autcom-sidebar-item">📅 Fechamentos Mensais</div>
+        <div class="autcom-sidebar-item active" onclick="goTo(4)">🎨 Tinta de Máquina</div>
+        <div class="autcom-sidebar-section">Favoritos</div>
+        <div class="autcom-sidebar-item" style="font-size:11px;" onclick="goTo(4)">Formulação de Tintas</div>
+        <div class="autcom-sidebar-item" style="font-size:11px;">Reimpressão de Documentos</div>
+        <div class="autcom-sidebar-section">Acessos Recentes</div>
+        <div class="autcom-sidebar-item" style="font-size:11px;" onclick="goTo(4)">Tinta de Máquina</div>
+        <div class="autcom-sidebar-item" style="font-size:11px;">Dashboard</div>
+      </div>
+      <div class="autcom-content">
+        <div class="autcom-shortcuts">
+          <div class="autcom-shortcut" onclick="goTo(4)"><span>👤</span><small>Novo<br>Atend.</small></div>
+          <div class="autcom-shortcut"><span>📦</span><small>Estoque</small></div>
+          <div class="autcom-shortcut" onclick="goTo(4)"><span>🧮</span><small>PDV</small></div>
+          <div class="autcom-shortcut"><span>📋</span><small>Relatório</small></div>
+          <div class="autcom-shortcut"><span>✅</span><small>Confirmar</small></div>
+          <div class="autcom-shortcut"><span>🏦</span><small>Caixa</small></div>
+        </div>
+        <div style="position:absolute;bottom:20px;right:20px;font-size:13px;color:#888;font-family:sans-serif;">Boa tarde, Fabio!</div>
+      </div>
+    </div>
+    <div class="autcom-statusbar">
+      <span>AUTCOM</span><span>|</span><span>15.0.0.4</span><span>|</span><span>53774</span><span>|</span><span>Autcom_Calicolors\autcom.exe</span>
+    </div>
+  </div>
+  <div id="si3"></div>
+</div>
+
+<!-- TELA 4 — POPUP ORÇAMENTO -->
+<div id="tela4" class="screen" style="flex-direction:column;">
+  <div class="window ghost">
+    <div class="title-bar"><span>🔄 Autcom V. 48.2.30.74.74 | 44032 | 001</span></div>
+    <div class="win-body" style="min-height:160px;"></div>
+  </div>
+  <div class="window popup">
+    <div class="title-bar">
+      <span class="title-left">🧾 Orçamento - Autcom V. 48.2...</span>
+      <div class="title-btns"><div class="title-btn">✕</div></div>
+    </div>
+    <div class="win-body" style="text-align:center;">
+      <div class="row" style="justify-content:center;margin-bottom:12px;">
+        <label style="min-width:auto;font-size:12px;">Nro de Documento para alterar:</label>
+        <input type="text" class="tiny" style="width:70px;">
+        <span style="font-size:11px;color:#808080;">OR</span>
+      </div>
+      <div class="sep"></div>
+      <div class="flex-center">
+        <button class="primary" onclick="goTo(5)">✅ Confirma</button>
+        <button onclick="goTo(3)">❌ Cancelar</button>
+      </div>
+      <div style="font-size:10px;color:#808080;margin-top:8px;">frmFatDigDocumento</div>
+    </div>
+  </div>
+  <div id="si4"></div>
+</div>
+
+<!-- TELA 5 — PDV COMPLETO -->
+<div id="tela5" class="screen" style="padding:0;align-items:stretch;justify-content:flex-start;">
+  <div style="background:#c0c0c0;width:100%;display:flex;flex-direction:column;min-height:100vh;font-family:'Courier New',monospace;">
+    <div class="title-bar">
+      <span class="title-left">🔄 Vendas - Orçamentos — Autcom V. 48.2.30.74.74 | 44030 | Test 001</span>
+      <div class="title-btns"><div class="title-btn">_</div><div class="title-btn">□</div><div class="title-btn">✕</div></div>
+    </div>
+    <div style="background:#c0c0c0;padding:4px 8px;display:flex;gap:16px;font-size:11px;border-bottom:1px solid #808080;flex-wrap:wrap;">
+      <span>Cliente: <input type="text" value="00000001" style="width:70px;font-size:11px;padding:1px 3px;border:2px solid;border-color:#808080 #fff #fff #808080;outline:none;background:#fff;"></span>
+      <span>CONSUMIDOR FINAL</span>
+      <span style="margin-left:auto;">Tab.Preço: <input type="text" value="1" style="width:20px;font-size:11px;padding:1px;border:2px solid;border-color:#808080 #fff #fff #808080;outline:none;background:#fff;"></span>
+      <span>Previsão: <input type="text" id="orcData" style="width:75px;font-size:11px;padding:1px 3px;border:2px solid;border-color:#808080 #fff #fff #808080;outline:none;background:#fff;"></span>
+      <span>Lim.Crédito: <b>0,00</b></span>
+    </div>
+    <div style="background:#c0c0c0;padding:4px 8px;display:flex;gap:12px;font-size:11px;border-bottom:1px solid #808080;align-items:center;flex-wrap:wrap;">
+      <span>Desc.Prof.: <input type="text" value="0,00" style="width:40px;font-size:11px;padding:1px 3px;border:2px solid;border-color:#808080 #fff #fff #808080;outline:none;background:#fff;"> %</span>
+      <span>Vendedor: <input type="text" value="••••" style="width:35px;font-size:11px;padding:1px 3px;border:2px solid;border-color:#808080 #fff #fff #808080;outline:none;background:#fff;"> <b>FABIO</b></span>
+      <span style="margin-left:auto;display:flex;gap:4px;">
+        <button class="small" style="background:#000080;color:#fff;border-color:#4040c0 #000040 #000040 #4040c0;" onclick="goTo(6)">🎨 F8 Tinta de Máquina</button>
+        <button class="small" onclick="goTo(6)">✅ Confirma</button>
+        <button class="small" onclick="goTo(3)">❌ Cancelar</button>
+      </span>
+    </div>
+    <div style="background:#c0c0c0;padding:3px 8px;font-size:11px;border-bottom:1px solid #808080;display:flex;gap:8px;align-items:center;">
+      <span>Localizar item:</span>
+      <input type="text" style="flex:1;font-size:11px;padding:1px 4px;border:2px solid;border-color:#808080 #fff #fff #808080;outline:none;background:#fff;">
+      <button class="small">Localizar o primeiro</button>
+      <button class="small">Localizar o próximo</button>
+    </div>
+    <div style="background:#000080;color:#fff;display:flex;padding:2px 8px;font-size:10px;font-family:'Courier New',monospace;">
+      <span style="width:20px;">Nº</span><span style="width:60px;">Código</span><span style="flex:2;">Descrição</span>
+      <span style="width:40px;">Est.TP</span><span style="width:55px;text-align:right;">Quant.</span>
+      <span style="width:35px;">Und.</span><span style="width:65px;text-align:right;">Unitário</span>
+      <span style="width:55px;text-align:right;">Desc(%)</span><span style="width:65px;text-align:right;">Vr.Total</span>
+    </div>
+    <div style="flex:1;background:#fff;min-height:200px;"></div>
+    <div style="background:#c0c0c0;border-top:1px solid #808080;padding:4px 8px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px;">
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;"><label style="font-size:10px;color:#666;">Total do ST:</label><b>0,00</b></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;"><label style="font-size:10px;color:#666;">Total do FCP ST:</label><b>0,00</b></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;"><label style="font-size:10px;color:#666;">Total com PI:</label><b>0,00</b></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;"><label style="font-size:10px;color:#666;">Total Geral:</label><b style="color:#c00;font-size:14px;">0,00</b></div>
+    </div>
+    <div style="background:#c0c0c0;border-top:1px solid #808080;padding:3px 8px;display:flex;gap:4px;flex-wrap:wrap;">
+      <button class="small" style="background:#000080;color:#fff;border-color:#4040c0 #000040 #000040 #4040c0;">[F10] Fechamento ▼</button>
+      <button class="small">[F3] C/C</button>
+      <button class="small">[Alt+F3] Inf. de Vendas</button>
+      <button class="small">[F2] End. Entrega</button>
+      <button class="small">[Alt+F2] Ped.D</button>
+      <button class="small">[Alt+F4] Financiamento</button>
+      <button class="small danger" onclick="goTo(3)">[Esc] Cancelar</button>
+    </div>
+    <div style="background:#c0c0c0;border-top:1px solid #808080;padding:2px 8px;font-size:10px;color:#666;">[F12] para alterar dados do consumidor | frmFatVendas</div>
+  </div>
+  <div id="si5"></div>
+</div>
+
+<!-- TELA 6 — CARROSSEL FABRICANTES -->
+<div id="tela6" class="screen" style="padding:20px;background:linear-gradient(135deg,#1a6b8a,#2196a6);">
+  <div style="font-size:14px;color:rgba(255,255,255,0.7);font-family:sans-serif;margin-bottom:8px;">Qual é a Marca?</div>
+  <div class="fab-carousel-title" id="fab-titulo">Selecione o Fabricante</div>
+  <div class="fab-carousel-track" id="fab-list">
+    <div style="color:rgba(255,255,255,0.7);font-size:13px;font-family:sans-serif;">⏳ Carregando...</div>
+  </div>
+  <button class="fab-confirm-btn" id="btn-fab-sel" disabled onclick="goToCorBuscaComFab()">Confirmar →</button>
+  <div style="position:absolute;left:40px;top:50%;transform:translateY(-50%);font-size:100px;opacity:0.1;">🎨</div>
+  <div style="margin-top:16px;color:rgba(255,255,255,0.4);font-size:11px;font-family:sans-serif;">Clique para selecionar • Clique novamente para confirmar</div>
+  <div id="si6"></div>
+</div>
+
+<!-- TELA 7 — CONSULTA DINÂMICA -->
+<div id="tela7" class="screen" style="padding:0;align-items:stretch;justify-content:flex-start;">
+  <div style="background:#c0c0c0;width:100%;display:flex;flex-direction:column;min-height:100vh;">
+    <div class="title-bar">
+      <span class="title-left" id="t7-title">🔍 Consulta Dinâmica</span>
+      <div class="title-btns"><div class="title-btn">_</div><div class="title-btn">□</div><div class="title-btn">✕</div></div>
+    </div>
+    <div style="background:#c0c0c0;border-bottom:1px solid #808080;padding:4px 8px;display:flex;gap:6px;">
+      <button class="small primary">[F4] Cadastrar Nova Fórmula</button>
+      <button class="small">[F6] Ver Preço</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;">
+      <table class="consulta-table" id="consulta-table" style="width:100%;">
+        <thead>
+          <tr>
+            <th style="width:70px;">Código</th>
+            <th style="width:170px;">Descrição</th>
+            <th style="width:85px;">Data Cadastro</th>
+            <th style="width:220px;">Produto</th>
+            <th style="width:30px;"></th>
+            <th style="width:60px;text-align:right;">Saldo Físico</th>
+            <th style="width:75px;text-align:right;">Saldo Disponível</th>
+            <th>Descrição do Item</th>
+          </tr>
+        </thead>
+        <tbody id="consulta-body">
+          <tr><td colspan="8" style="text-align:center;padding:24px;color:#808080;">Selecione um fabricante para buscar as cores</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="background:#c0c0c0;border-top:2px solid #808080;padding:6px 12px;display:flex;align-items:flex-start;gap:20px;">
+      <div>
+        <div style="font-size:11px;margin-bottom:4px;font-weight:bold;">Utilizar consulta contida</div>
+        <div style="display:grid;grid-template-columns:100px 1fr;gap:2px 6px;font-size:11px;">
+          <span style="color:#000080;font-weight:bold;">Código</span>
+          <input type="text" class="consulta-input" id="t7-filtro-cod" style="width:90px;" placeholder="sw" oninput="filtrarConsulta()">
+          <span style="color:#000080;font-weight:bold;">Descrição</span>
+          <input type="text" class="consulta-input" id="t7-filtro-desc" style="width:150px;" oninput="filtrarConsulta()">
+          <span style="color:#000080;font-weight:bold;">Data Cadastro</span>
+          <input type="text" class="consulta-input" style="width:90px;">
+          <span style="color:#000080;font-weight:bold;">Produto</span>
+          <input type="text" class="consulta-input" style="width:150px;">
+          <span style="color:#000080;font-weight:bold;">Descrição do Item</span>
+          <input type="text" class="consulta-input" style="width:150px;">
+        </div>
+        <div style="font-size:10px;color:#555;margin-top:4px;">[F3] - Muda Ordem &nbsp;|&nbsp; [Alt+B] - Alterna foco &nbsp;|&nbsp; [TAB] - Registra item para venda</div>
+      </div>
+    </div>
+    <div style="background:#c0c0c0;border-top:1px solid #808080;padding:3px 8px;display:flex;gap:4px;justify-content:space-between;">
+      <div style="display:flex;gap:4px;">
+        <button class="small">✅ Confirma</button>
+        <button class="small">⚙️ Ajusta Colunas</button>
+        <button class="small">💾 Salva Largura Colunas</button>
+        <button class="small">🔧 Configura Consulta</button>
+      </div>
+      <button class="small danger" onclick="goTo(5)">🚪 Sair</button>
+    </div>
+  </div>
+  <div id="si7"></div>
+</div>
+
+<!-- TELA 8 — TINTA DE MÁQUINA -->
+<div id="tela8" class="screen" style="flex-direction:column;">
+  <div class="window ghost" style="max-width:680px;">
+    <div class="title-bar"><span>PDV</span></div>
+    <div class="win-body" style="min-height:80px;"></div>
+  </div>
+  <div class="window" style="max-width:540px;">
+    <div class="title-bar">
+      <span class="title-left" id="t8-title">🎨 Tinta de Máquina — Autcom V. 48.2.30.74.74</span>
+      <div class="title-btns"><div class="title-btn">✕</div></div>
+    </div>
+    <div class="win-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div class="tinta-field">
+          <label>Base Atual</label>
+          <div style="display:flex;gap:4px;">
+            <input type="text" id="t8-base-cod" value="00604" style="width:55px;">
+            <input type="text" id="t8-base-nome" value="METALATEX SUPER LAVÁVEL FOSCO BASE Z 3,2L" style="flex:1;font-size:10px;">
+          </div>
+        </div>
+        <div class="tinta-field">
+          <label>Preço</label>
+          <input type="text" id="t8-base-preco" value="146,37" style="text-align:right;">
+        </div>
+        <div class="tinta-field">
+          <label>Nova Base</label>
+          <div style="display:flex;gap:4px;">
+            <input type="text" value="00604" style="width:55px;background:#c8e6ff;">
+            <input type="text" id="t8-nova-base-nome" value="METALATEX SUPER LAVÁVEL FOSCO BASE Z 3,2L" style="flex:1;font-size:10px;background:#c8e6ff;">
+          </div>
+        </div>
+        <div class="tinta-field">
+          <label>Preço</label>
+          <input type="text" style="text-align:right;">
+        </div>
+        <div class="tinta-field" style="grid-column:1/-1;">
+          <label>Descrição Adicional</label>
+          <input type="text" value="">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div class="tinta-price-box">
+          <div class="tinta-price-label">Valor da Base</div>
+          <div class="tinta-price-val" id="t8-valor-base">146,37</div>
+        </div>
+        <div class="tinta-price-box">
+          <div class="tinta-price-label">Valor dos Colorantes</div>
+          <div class="tinta-price-val" id="t8-valor-cor">0,00</div>
+        </div>
+        <div class="tinta-price-box">
+          <div class="tinta-price-label">Valor Final</div>
+          <div class="tinta-price-val" id="t8-valor-final">0,00</div>
+        </div>
+      </div>
+      <div class="flex-end">
+        <button class="primary" onclick="carregarFormulacao()">🧪 Formulação</button>
+        <button onclick="goTo(7)">✅ Confirma</button>
+        <button class="danger" onclick="goTo(7)">🚪 Sair</button>
+      </div>
+      <div style="font-size:10px;color:#808080;text-align:right;margin-top:4px;">frmAbstractDigTintaMobiliaria</div>
+    </div>
+    <div class="status-bar">
+      <span id="t8-statusbar-base">Base Atual</span><span>|</span>
+      <span id="t8-statusbar-preco">Preço</span><span>|</span>
+      <span id="t8-statusbar-valbase">Valor da Base</span>
+    </div>
+  </div>
+  <div id="si8"></div>
+</div>
+
+<!-- TELA 9 — FORMULAÇÃO -->
+<div id="tela9" class="screen">
+  <div class="window wide">
+    <div class="title-bar">
+      <span class="title-left" id="t9-title">⚗️ Formulação — Autcom V. 48.2.30.74.74 [ 436856 ] — Emp: 001</span>
+      <div class="title-btns"><div class="title-btn">✕</div></div>
+    </div>
+    <div class="win-body">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px;">
+        <div id="t9-swatch" style="width:56px;height:56px;border:2px solid #808080;flex-shrink:0;"></div>
+        <div>
+          <div style="font-weight:bold;font-size:14px;" id="t9-nome-cod">—</div>
+          <div style="font-size:12px;color:#555;" id="t9-fab-linha">—</div>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div class="listbox" id="t9-formula-list">
+        <div class="list-header">
+          <span style="flex:2;">Colorante</span>
+          <span style="width:90px;text-align:right;">Quantidade(ML)</span>
+          <span style="width:90px;text-align:right;">Quantidade(Onça)</span>
+          <span style="width:110px;text-align:right;">Preço</span>
+          <span style="width:80px;text-align:right;">Embalagem</span>
+        </div>
+        <div id="t9-formula-body">
+          <div style="padding:16px;text-align:center;color:#808080;font-size:12px;">
+            <span id="t9-loading">⏳ Carregando...</span>
+          </div>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div style="font-size:11px;font-weight:bold;color:#000080;margin-bottom:4px;">Calculo da Fórmula</div>
+      <div id="t9-calculo" style="background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;padding:8px 12px;font-size:12px;min-height:70px;line-height:2;">
+        Aguardando...
+      </div>
+      <div class="sep"></div>
+      <div class="tamanhos">
+        <button class="tamanho-btn">¼ litro</button>
+        <button class="tamanho-btn">1 litro</button>
+        <button class="tamanho-btn selected">3,6 litros (galão)</button>
+        <button class="tamanho-btn">18 litros</button>
+      </div>
+      <div class="sep"></div>
+      <div class="flex-end">
+        <button class="primary">🖨️ Imprimir</button>
+        <button onclick="goTo(8)">← Voltar</button>
+        <button class="danger" onclick="goTo(0)">↩ Reiniciar</button>
+      </div>
+    </div>
+    <div class="status-bar" id="t9-statusbar">
+      <span>⚗️ Formulação</span>
+    </div>
+  </div>
+  <div id="si9"></div>
+</div>
+
+<script>
+var TOTAL = 10;
+var stepNames = ['Desktop','Launcher','Login','Principal','Orçamento','PDV','Fabricante','Consulta','Tinta Máq.','Formulação'];
+var currentStep = 0;
+var selectedFab = null;
+var selectedCor = null;
+var DB_PATH = '/databases/BBFCoresSW.FDB';
+
+var FAB_CONFIG = {
+  'SHERWIN':                   {emoji:'🟥'},
+  'TINTAS MC':                 {emoji:'🔵'},
+  'CORES DE JANETE':           {emoji:'🌸'},
+  'DESIGNER COLOR COLLECTION': {emoji:'✨'},
+};
+
+function goTo(n) {
+  document.getElementById('tela' + currentStep).classList.remove('active');
+  currentStep = n;
+  document.getElementById('tela' + n).classList.add('active');
+  renderIndicator(n);
+  window.scrollTo(0,0);
+  if (n === 6) carregarFabricantes();
+  if (n === 8) preencherTintaMaquina();
+}
+
+function renderIndicator(current) {
+  for (var i = 0; i < TOTAL; i++) {
+    var el = document.getElementById('si' + i);
+    if (!el) continue;
+    el.innerHTML = '';
+    if (i === 0) continue;
+  }
+  var container = document.getElementById('si' + current);
+  if (!container) return;
+  var wrapper = document.createElement('div');
+  wrapper.id = 'step-indicator';
+  stepNames.forEach(function(name, i) {
+    var badge = document.createElement('div');
+    badge.className = 'step-badge' + (i+1===current?' current':i+1<current?' done':'');
+    badge.textContent = (i+1) + '. ' + name;
+    wrapper.appendChild(badge);
+  });
+  container.appendChild(wrapper);
+}
+
+function doLogin() {
+  var u = document.getElementById('login-user').value.trim();
+  var p = document.getElementById('login-pass').value.trim();
+  var err = document.getElementById('login-err');
+  if (u === '001' && p === '6071') { err.style.display='none'; goTo(3); }
+  else { err.style.display='block'; }
+}
+
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+setInterval(updateClock,1000); updateClock();
+document.getElementById('date3').textContent = new Date().toLocaleDateString('pt-BR');
+document.getElementById('orcData').value = new Date().toLocaleDateString('pt-BR');
+
+async function apiQuery(sql) {
+  var res = await fetch('/api/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({db:DB_PATH,sql:sql})});
+  var data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+// ── TELA 6: Carrossel ─────────────────────────────────────────
+async function carregarFabricantes() {
+  var list = document.getElementById('fab-list');
+  list.innerHTML = '<div style="color:rgba(255,255,255,0.7);font-size:13px;font-family:sans-serif;">⏳ Carregando...</div>';
+  selectedFab = null;
+  document.getElementById('btn-fab-sel').disabled = true;
+  try {
+    var data = await apiQuery("SELECT COD_COLECAO, NOME_COLECAO FROM COLECOES WHERE FLAG_EXCLUIDO='N' ORDER BY NOME_COLECAO");
+    list.innerHTML = '';
+    data.rows.forEach(function(row) {
+      var nome = (row.NOME_COLECAO||'').trim();
+      var cfg = FAB_CONFIG[nome] || {emoji:'🎨'};
+      var div = document.createElement('div');
+      div.className = 'fab-card';
+      div.dataset.cod = row.COD_COLECAO;
+      div.dataset.nome = nome;
+      div.innerHTML = '<div class="fab-card-logo">' + cfg.emoji + '</div><div class="fab-card-name">' + nome + '</div>';
+      div.onclick = function() { fabSelect(this); };
+      list.appendChild(div);
+    });
+  } catch(e) {
+    var fallbacks = [{cod:1,nome:'SHERWIN'},{cod:2,nome:'TINTAS MC'},{cod:3,nome:'CORES DE JANETE'},{cod:4,nome:'DESIGNER COLOR COLLECTION'}];
+    list.innerHTML = '';
+    fallbacks.forEach(function(f) {
+      var cfg = FAB_CONFIG[f.nome]||{emoji:'🎨'};
+      var div = document.createElement('div');
+      div.className = 'fab-card'; div.dataset.cod = f.cod; div.dataset.nome = f.nome;
+      div.innerHTML = '<div class="fab-card-logo">' + cfg.emoji + '</div><div class="fab-card-name">' + f.nome + '</div>';
+      div.onclick = function(){ fabSelect(this); };
+      list.appendChild(div);
+    });
+  }
+}
+
+function fabSelect(el) {
+  var wasSelected = el.classList.contains('selected');
+  document.querySelectorAll('.fab-card').forEach(function(c){ c.classList.remove('selected'); });
+  el.classList.add('selected');
+  selectedFab = {cod: el.dataset.cod, nome: el.dataset.nome};
+  document.getElementById('btn-fab-sel').disabled = false;
+  document.getElementById('fab-titulo').textContent = selectedFab.nome;
+  if (wasSelected) goToCorBuscaComFab();
+}
+
+function goToCorBuscaComFab() {
+  if (!selectedFab) return;
+  document.getElementById('t7-title').textContent = '🔍 Consulta Dinâmica — ' + selectedFab.nome;
+  goTo(7);
+  carregarConsulta('');
+}
+
+// ── TELA 7: Consulta Dinâmica ─────────────────────────────────
+async function carregarConsulta(filtro) {
+  var tbody = document.getElementById('consulta-body');
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:#808080;">⏳ Carregando...</td></tr>';
+  try {
+    var where = "c.FLAG_EXCLUIDO='N'";
+    if (selectedFab && selectedFab.cod) where += ' AND c.COD_COLECAO=' + selectedFab.cod;
+    if (filtro) where += " AND (UPPER(c.COD_COR_USUARIO) CONTAINING UPPER('" + filtro.replace(/'/g,"''") + "') OR UPPER(c.NOME_COR) CONTAINING UPPER('" + filtro.replace(/'/g,"''") + "'))";
+    var data = await apiQuery('SELECT FIRST 300 c.COD_COR,c.COD_COR_USUARIO,c.NOME_COR,c.R,c.G,c.B,c.COD_COLECAO FROM CORES c WHERE ' + where + ' ORDER BY c.NOME_COR');
+    renderConsulta(data.rows);
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="8" style="color:#c00;padding:12px;">❌ ' + e.message + '</td></tr>';
+  }
+}
+
+function renderConsulta(rows) {
+  var tbody = document.getElementById('consulta-body');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:#808080;">Nenhuma cor encontrada</td></tr>';
+    return;
+  }
+  tbody.innerHTML = '';
+  rows.forEach(function(row) {
+    var r=row.R||200, g=row.G||200, b=row.B||200;
+    var hex='#'+[r,g,b].map(function(v){return ('0'+Number(v).toString(16)).slice(-2);}).join('');
+    var tr = document.createElement('tr');
+    tr.dataset.cod=row.COD_COR; tr.dataset.codUsr=(row.COD_COR_USUARIO||'').trim();
+    tr.dataset.nome=(row.NOME_COR||'').trim(); tr.dataset.r=r; tr.dataset.g=g; tr.dataset.b=b;
+    tr.dataset.colecao=row.COD_COLECAO;
+    tr.innerHTML =
+      '<td style="font-family:monospace;color:#000080;font-weight:bold;">'+(row.COD_COR_USUARIO||'').trim()+'</td>'+
+      '<td style="font-weight:bold;">'+(row.NOME_COR||'').trim()+'</td>'+
+      '<td style="color:#666;">08/05/2025</td>'+
+      '<td style="color:#444;font-size:10px;">NOVO METALATEX ACRÍLICO FOSCO</td>'+
+      '<td><span style="display:inline-block;width:14px;height:14px;background:'+hex+';border:1px solid #808080;"></span></td>'+
+      '<td style="text-align:right;color:#c00;">-2,00</td>'+
+      '<td style="text-align:right;color:#c00;">-2,00</td>'+
+      '<td style="font-size:10px;color:#444;">METALATEX SUPER LAVÁVEL FOSCO BASE</td>';
+    tr.onclick = function(){ consultaSelect(this); };
+    tr.ondblclick = function(){ consultaSelect(this); abrirTintaMaquina(); };
+    tbody.appendChild(tr);
+  });
+}
+
+function consultaSelect(tr) {
+  document.querySelectorAll('#consulta-body tr').forEach(function(r){ r.classList.remove('active'); });
+  tr.classList.add('active');
+  selectedCor = {cod:tr.dataset.cod, codUsr:tr.dataset.codUsr, nome:tr.dataset.nome,
+    r:tr.dataset.r, g:tr.dataset.g, b:tr.dataset.b, colecao:tr.dataset.colecao};
+}
+
+function filtrarConsulta() {
+  var cod  = document.getElementById('t7-filtro-cod').value.trim();
+  var desc = document.getElementById('t7-filtro-desc').value.trim();
+  carregarConsulta(cod || desc);
+}
+
+// ── TELA 8: Tinta de Máquina ──────────────────────────────────
+function abrirTintaMaquina() {
+  if (!selectedCor) return;
+  preencherTintaMaquina();
+  goTo(8);
+}
+
+function preencherTintaMaquina() {
+  if (!selectedCor) return;
+  document.getElementById('t8-title').textContent = '🎨 Tinta de Máquina — ' + selectedCor.codUsr + ' ' + selectedCor.nome + ' — Autcom V. 48.2.30.74.74 [ 436856 ] — Emp: 001';
+  document.getElementById('t8-statusbar-base').textContent = 'Base Atual';
+  document.getElementById('t8-statusbar-preco').textContent = 'Preço';
+  document.getElementById('t8-statusbar-valbase').textContent = 'Valor da Base';
+}
+
+// ── TELA 9: Formulação ────────────────────────────────────────
+async function carregarFormulacao() {
+  if (!selectedCor) return;
+  var r=selectedCor.r, g=selectedCor.g, b=selectedCor.b;
+  var hex='#'+[r,g,b].map(function(v){return ('0'+Number(v).toString(16)).slice(-2);}).join('');
+  document.getElementById('t9-swatch').style.background = hex;
+  document.getElementById('t9-nome-cod').textContent = selectedCor.codUsr + ' — ' + selectedCor.nome;
+  document.getElementById('t9-fab-linha').textContent = (selectedFab?selectedFab.nome:'') + ' | Coleção: ' + selectedCor.colecao;
+  document.getElementById('t9-title').textContent = '⚗️ Formulação — ' + selectedCor.nome + ' — Autcom V. 48.2.30.74.74 [ 436856 ] — Emp: 001';
+  goTo(9);
+  document.getElementById('t9-calculo').innerHTML = 'Calculando...';
+
+  // Carrega embalagens disponíveis para esta cor
+  try {
+    var embData = await apiQuery(
+      'SELECT DISTINCT fc.COD_EMBALAGEM, e.DESCRICAO_EMBALAGEM, e.CAPACIDADE ' +
+      'FROM FORMULAS_CORANTES fc ' +
+      'LEFT JOIN EMBALAGENS e ON e.COD_EMBALAGEM = fc.COD_EMBALAGEM ' +
+      'WHERE fc.COD_COR = ' + selectedCor.cod +
+      ' AND fc.COD_COLECAO = ' + (selectedCor.colecao||1) +
+      ' ORDER BY e.CAPACIDADE'
+    );
+    var tamanhoDiv = document.querySelector('.tamanhos');
+    tamanhoDiv.innerHTML = '';
+    var firstEmb = null;
+    embData.rows.forEach(function(row, i) {
+      if (!firstEmb) firstEmb = row.COD_EMBALAGEM;
+      var btn = document.createElement('button');
+      btn.className = 'tamanho-btn' + (i===0?' selected':'');
+      btn.dataset.emb = row.COD_EMBALAGEM;
+      var desc = (row.DESCRICAO_EMBALAGEM||'Emb.'+row.COD_EMBALAGEM).trim();
+      btn.textContent = desc;
+      btn.onclick = function() {
+        document.querySelectorAll('.tamanho-btn').forEach(function(b){ b.classList.remove('selected'); });
+        this.classList.add('selected');
+        renderFormulacaoPorEmbalagem(this.dataset.emb);
+      };
+      tamanhoDiv.appendChild(btn);
+    });
+    if (firstEmb) renderFormulacaoPorEmbalagem(firstEmb);
+    else renderFormulacaoPorEmbalagem(null);
+  } catch(e) {
+    renderFormulacaoPorEmbalagem(null);
+  }
+}
+
+async function renderFormulacaoPorEmbalagem(codEmbalagem) {
+  var fbody = document.getElementById('t9-formula-body');
+  fbody.innerHTML = '<div style="padding:16px;text-align:center;color:#808080;">⏳ Carregando...</div>';
+
+  try {
+    var embFilter = codEmbalagem ? ' AND COD_EMBALAGEM = ' + codEmbalagem : '';
+    var embFilterFC = codEmbalagem ? ' AND fc.COD_EMBALAGEM = ' + codEmbalagem : '';
+    var data = await apiQuery(
+      'SELECT fc.COD_CORANTE, c.NOME_CORANTE, fc.QUANTIDADE_CORANTE, fc.COD_EMBALAGEM, ' +
+      '(SELECT FIRST 1 ct2.PRECO_CUSTO FROM CORANTES_TABELAS ct2 WHERE ct2.COD_CORANTE = fc.COD_CORANTE AND ct2.PRECO_CUSTO > 0) AS PRECO_CUSTO ' +
+      'FROM FORMULAS_CORANTES fc ' +
+      'LEFT JOIN CORANTES c ON c.COD_CORANTE = fc.COD_CORANTE ' +
+      'WHERE fc.COD_COR = ' + selectedCor.cod +
+      ' AND fc.COD_COLECAO = ' + (selectedCor.colecao||1) +
+      ' AND fc.COD_PRODUTO = (SELECT FIRST 1 COD_PRODUTO FROM FORMULAS_CORANTES WHERE COD_COR = ' + selectedCor.cod +
+      ' AND COD_COLECAO = ' + (selectedCor.colecao||1) + embFilter + ')' +
+      embFilterFC + ' ORDER BY fc.COD_CORANTE'
+    );
+
+    if (!data.rows.length) {
+      fbody.innerHTML = '<div style="padding:16px;text-align:center;color:#808080;">Sem formulação para esta embalagem</div>';
+      return;
+    }
+
+    fbody.innerHTML = '';
+    var totalML=0, totalOnca=0, totalCorValue=0;
+    var BASE_PRECO = 146.37;
+
+    data.rows.forEach(function(row) {
+      var qtdML   = parseFloat(row.QUANTIDADE_CORANTE||0);
+      var qtdOnca = qtdML / 29.5735;
+      var preco   = parseFloat(row.PRECO_CUSTO||0);
+      var embal   = parseFloat(row.COD_EMBALAGEM||1);
+      var valorCor = embal>0 ? (qtdML*preco/embal) : 0;
+      totalML += qtdML; totalOnca += qtdOnca; totalCorValue += valorCor;
+      var div = document.createElement('div');
+      div.className = 'list-row';
+      div.innerHTML =
+        '<span style="flex:2;">'+(row.NOME_CORANTE||'Corante '+row.COD_CORANTE).trim()+'</span>'+
+        '<span style="width:90px;text-align:right;font-family:monospace;">'+qtdML.toFixed(3).replace('.',',')+'</span>'+
+        '<span style="width:90px;text-align:right;font-family:monospace;">'+qtdOnca.toFixed(2).replace('.',',')+'</span>'+
+        '<span style="width:110px;text-align:right;font-family:monospace;">'+preco.toFixed(6).replace('.',',')+'</span>'+
+        '<span style="width:80px;text-align:right;color:#555;">'+embal.toFixed(4).replace('.',',')+'</span>';
+      fbody.appendChild(div);
+    });
+
+    var totalDiv = document.createElement('div');
+    totalDiv.className = 'list-row';
+    totalDiv.style.cssText = 'font-weight:bold;border-top:2px solid #000080;';
+    totalDiv.innerHTML =
+      '<span style="flex:2;color:#000080;">TOTAL</span>'+
+      '<span style="width:90px;text-align:right;font-family:monospace;color:#000080;">'+totalML.toFixed(3).replace('.',',')+'</span>'+
+      '<span style="width:90px;text-align:right;font-family:monospace;color:#000080;">'+totalOnca.toFixed(2).replace('.',',')+'</span>'+
+      '<span style="width:110px;"></span><span style="width:80px;"></span>';
+    fbody.appendChild(totalDiv);
+
+    var valorFinal = BASE_PRECO + totalCorValue;
+    document.getElementById('t9-calculo').innerHTML =
+      'Valor da Base = '+BASE_PRECO.toFixed(2).replace('.',',')+'<br>'+
+      'Valor do Colorante = (Quantidade * Preço / Embalagem)<br>'+
+      'Valor da Tinta = Valor da Base + (Soma do Valor do Colorante de todos os Colorantes)';
+    document.getElementById('t8-valor-cor').textContent = totalCorValue.toFixed(2).replace('.',',');
+    document.getElementById('t8-valor-final').textContent = valorFinal.toFixed(2).replace('.',',');
+    document.getElementById('t9-statusbar').innerHTML =
+      '<span>✅ '+data.rows.length+' corantes</span><span>|</span><span>'+selectedCor.codUsr+' - '+selectedCor.nome+'</span>';
+  } catch(e) {
+    fbody.innerHTML = '<div style="padding:16px;color:#800000;font-size:12px;">❌ '+e.message+'</div>';
+  }
+}
+
+renderIndicator(0);
+</script>
+</body>
+</html>
